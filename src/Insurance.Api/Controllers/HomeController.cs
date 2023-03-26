@@ -1,52 +1,29 @@
-using System.Net;
-using System.Net.Http;
-using System.Text.Json.Serialization;
+using Insurance.Api.Services.Dto;
 using Microsoft.AspNetCore.Mvc;
+using Insurance.Api.Services;
+using Microsoft.Extensions.Options;
 
-namespace Insurance.Api.Controllers
-{
-    public class HomeController: Controller
+public class HomeController : Controller
     {
-        [HttpPost]
+    private readonly MySettings _settings;
+
+    public HomeController(MySettings settings)
+    {
+        _settings = settings;
+    }
+   
+
+    [HttpPost]
         [Route("api/insurance/product")]
         public InsuranceDto CalculateInsurance([FromBody] InsuranceDto toInsure)
         {
             int productId = toInsure.ProductId;
 
-            BusinessRules.GetProductType(ProductApi, productId, ref toInsure);
-            BusinessRules.GetSalesPrice(ProductApi, productId, ref toInsure);
-
-            float insurance = 0f;
-
-            if (toInsure.SalesPrice < 500)
-                toInsure.InsuranceValue = 0;
-            else
-            {
-                if (toInsure.SalesPrice > 500 && toInsure.SalesPrice < 2000)
-                    if (toInsure.ProductTypeHasInsurance)
-                        toInsure.InsuranceValue += 1000;
-                if (toInsure.SalesPrice >= 2000)
-                    if (toInsure.ProductTypeHasInsurance)
-                        toInsure.InsuranceValue += 2000;
-                if (toInsure.ProductTypeName == "Laptops" || toInsure.ProductTypeName == "Smartphones" && toInsure.ProductTypeHasInsurance)
-                    toInsure.InsuranceValue += 500;
-            }
+            BusinessRules.GetProductType(_settings.ProductApi, productId, ref toInsure);
+            BusinessRules.GetSalesPrice(_settings.ProductApi, productId, ref toInsure);
+            BusinessRules.CalculateInsurance(ref toInsure);
 
             return toInsure;
         }
 
-        public class InsuranceDto
-        {
-            public int ProductId { get; set; }
-            public float InsuranceValue { get; set; }
-            [JsonIgnore]
-            public string ProductTypeName { get; set; }
-            [JsonIgnore]
-            public bool ProductTypeHasInsurance { get; set; }
-            [JsonIgnore]
-            public float SalesPrice { get; set; }
-        }
-
-        private const string ProductApi = "http://localhost:5002";
-    }
-}
+ }
