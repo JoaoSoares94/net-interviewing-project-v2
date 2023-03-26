@@ -1,3 +1,4 @@
+using Insurance.Api.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,9 @@ namespace Insurance.Api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            MySettings mySettings = Configuration.GetSection("Settings").Get<MySettings>();
+
+            services.AddSingleton(mySettings);
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
@@ -36,7 +40,7 @@ namespace Insurance.Api
                 app.UseSwaggerUI(options =>
                 {
                     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
-                    options.RoutePrefix = string.Empty;
+                    options.RoutePrefix = "swagger";
                 });
 
             }
