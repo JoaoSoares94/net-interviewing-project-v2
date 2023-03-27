@@ -7,5 +7,5 @@ public class OrderDto
     public int OrderId { get; set; }
     public List<InsuranceDto> Items { get; set; }
 
-    public int OrderInsurance { get; set; } = 0;
+    public float OrderInsurance { get; set; } = 0;
 }
