@@ -21,8 +21,9 @@ namespace Insurance.Api
         public void ConfigureServices(IServiceCollection services)
         {
             MySettings mySettings = Configuration.GetSection("Settings").Get<MySettings>();
-
+            services.AddScoped<IInsuranceService, InsuranceService>();
             services.AddSingleton(mySettings);
+            services.AddHttpClient<BusinessRules>();
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
