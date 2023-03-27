@@ -1,73 +1,83 @@
+using Insurance.Api.Services;
 using Insurance.Api.Services.Dto;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 
-public static class BusinessRules
+public class BusinessRules
 {
-    public static void GetProductType(string baseAddress, int productID, ref InsuranceDto insurance)
+    private readonly HttpClient _httpClient;
+    private readonly MySettings _mySettings;
+
+    public BusinessRules(HttpClient httpClient, MySettings mySettings)
     {
-        HttpClient client = new HttpClient { BaseAddress = new Uri(baseAddress) };
-        string json = client.GetAsync("/product_types").Result.Content.ReadAsStringAsync().Result;
-        var collection = JsonConvert.DeserializeObject<dynamic>(json);
+        _httpClient = httpClient;
+        _mySettings = mySettings;
+        _httpClient.BaseAddress = new Uri(mySettings.ProductApi);
+    }
 
-        json = client.GetAsync(string.Format("/products/{0:G}", productID)).Result.Content.ReadAsStringAsync().Result;
-        var product = JsonConvert.DeserializeObject<dynamic>(json);
 
-        int productTypeId = product.productTypeId;
-        string productTypeName = null;
-        bool hasInsurance = false;
-
-        insurance = new InsuranceDto();
-
-        for (int i = 0; i < collection.Count; i++)
+    public ProductDto GetProductById(int productId)
+    {
+        try
         {
-            if (collection[i].id == productTypeId && collection[i].canBeInsured == true)
-            {
-                insurance.ProductTypeName = collection[i].name;
-                insurance.ProductTypeHasInsurance = true;
-            }
+            string json = _httpClient.GetAsync($"/products/{productId}").Result.Content.ReadAsStringAsync().Result;
+            var product = JsonConvert.DeserializeObject<ProductDto>(json);
+            return product;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+
+
+    }
+
+    public ProductTypeDto GetProductType(int productTypeId)
+    {
+        try
+        {
+            var json = _httpClient.GetAsync(string.Format("/product_types/{0:G}", productTypeId)).Result.Content.ReadAsStringAsync().Result;
+            var productTypeDto = JsonConvert.DeserializeObject<ProductTypeDto>(json);
+            return productTypeDto;
+        }
+        catch (Exception)
+        {
+            throw;
         }
     }
 
-    public static void GetSalesPrice(string baseAddress, int productID, ref InsuranceDto insurance)
+    public List<ProductTypeDto> GetProductTypes()
     {
-        HttpClient client = new HttpClient { BaseAddress = new Uri(baseAddress) };
-        string json = client.GetAsync(string.Format("/products/{0:G}", productID)).Result.Content.ReadAsStringAsync().Result;
+        try
+        {
+            var json = _httpClient.GetAsync("/product_types").Result.Content.ReadAsStringAsync().Result;
+            var productTypeDto = JsonConvert.DeserializeObject<List<ProductTypeDto>>(json);
+            return productTypeDto;
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+    }
+
+
+    //I dont find this method particularly necessary.
+    public void GetSalesPrice(int productID, ref InsuranceDto insurance)
+    {
+        string json = _httpClient.GetAsync(string.Format("/products/{0:G}", productID)).Result.Content.ReadAsStringAsync().Result;
         var product = JsonConvert.DeserializeObject<dynamic>(json);
 
         insurance.SalesPrice = product.salesPrice;
     }
 
-    public static void CalculateInsurance(ref InsuranceDto toInsure)
-    {
-        //We can check whether to perform Insurance calculation first. Its cleaner and more perfomant. Always good to check if our product is not null.
-        if (toInsure != null && toInsure.ProductTypeHasInsurance)
-        {
-            // Check for rule - If the type of the product is a smartphone or a laptop, add € 500 more to the insurance cost.
 
-            if (toInsure.ProductTypeName == "Laptops" || toInsure.ProductTypeName == "Smartphones")
-            {
-                toInsure.InsuranceValue += 500;
-            }
 
-            //Using a switch expression is cleaner than having nested if conditions.
-            int calculateInsuranceValue = toInsure.SalesPrice switch
-            {
-                // Check for rule - If the product sales price is less than € 500, no insurance required
-                < 500 => 0,
-                // Check for rule - If the product sales price => € 500 but < € 2000, insurance cost is € 1000
-                >= 500 and < 2000 => 1000,
-                // Check for rule - If the product sales price => € 2000, insurance cost is €2000
-                > 2000 => 2000,
-                //default 
-                _ => throw new NotFiniteNumberException()
-            };
-            toInsure.InsuranceValue = +calculateInsuranceValue;
-        }
-    }
-
-    public static float CalculateInsurance( InsuranceDto toInsure)
+    public static float CalculateInsurance(InsuranceDto toInsure)
     {
         float insuranceValue = toInsure.InsuranceValue;
         //We can check whether to perform Insurance calculation first. Its cleaner and more perfomant. Always good to check if our product is not null.
@@ -100,10 +110,10 @@ public static class BusinessRules
     }
     public static void CalculateOrderInsurance(ref OrderDto toInsure)
     {
-       float orderInsuranceValue = 0;
+        float orderInsuranceValue = 0;
         foreach (InsuranceDto item in toInsure.Items)
         {
-          orderInsuranceValue +=  CalculateInsurance( item);
+            orderInsuranceValue += CalculateInsurance(item);
         }
 
     }
