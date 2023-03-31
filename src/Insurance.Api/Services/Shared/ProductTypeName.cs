@@ -1,5 +1,5 @@
 ﻿
-static class ProductTypeName
+public static class ProductTypeName
 {
     public const string Laptops = "Laptops";
     public const string Smartphones = "Smartphones";
