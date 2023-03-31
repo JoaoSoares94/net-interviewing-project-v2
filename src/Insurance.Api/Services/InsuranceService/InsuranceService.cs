@@ -1,75 +1,148 @@
-﻿using Insurance.Api.Services.Dto;
+﻿using Insurance.Api.Model;
+using Insurance.Api.Repositories.InsuranceRepository;
+using Insurance.Api.Repositories.SurchargeRateRepo;
+using Insurance.Api.Services.Dto;
+using Insurance.Api.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 
 public class InsuranceService : IInsuranceService
 {
-    private readonly BusinessRules _bussinessRules;
+    private readonly IBusinessRules _bussinessRules;
+    private readonly IInsuranceRepo _insuranceRepo;
+    private readonly ISurchargeRateRepo _surchargeRateRepo;
 
-    public InsuranceService(BusinessRules bussinessRules)
+    public InsuranceService(IBusinessRules bussinessRules, IInsuranceRepo insuranceRepo, ISurchargeRateRepo surchargeRateRepo)
     {
         _bussinessRules = bussinessRules;
+        _insuranceRepo = insuranceRepo;
+        _surchargeRateRepo = surchargeRateRepo;
     }
 
-    public InsuranceDto CalculateInsurance(int productId)
+
+
+    public async Task<InsuranceDto> CalculateInsurance(int productId)
     {
         var productDto = _bussinessRules.GetProductById(productId);
-        var productTypeDto = _bussinessRules.GetProductType(productDto.productTypeId);
-
-        InsuranceDto toInsure = new InsuranceDto(productDto.id, productTypeDto.name, productTypeDto.canBeInsured, productDto.salesPrice);
-        //We can check whether to perform Insurance calculation first. Its cleaner and more perfomant. Always good to check if our product is not null.
-        if (toInsure != null && toInsure.ProductTypeHasInsurance)
+        if (productDto is null)
         {
-            var insuredDto = CalculateInsuranceValue(toInsure);
-            return insuredDto;
-
+            return null;
+        }
+        var productTypeDto = _bussinessRules.GetProductType(productDto.productTypeId);
+        if (productTypeDto is null)
+        {
+            return null;
         }
 
-        return toInsure;
+        var toBeInsured = new InsuredProduct(productDto, productTypeDto);
+        //We can check whether to perform Insurance calculation first. Its cleaner and more perfomant. Always good to check if our product is not null.
+        if (toBeInsured is not null)
+        {
+            if (toBeInsured.ProductTypeHasInsurance)
+            {
+                var calculateInsurance = await CalculateInsuranceValue(toBeInsured);
+                var insuredProduct = await _insuranceRepo.Add(calculateInsurance);
+                return insuredProduct.toDto(); ;
+            }
+
+            return new InsuranceDto(productDto, productTypeDto);
+        }
+
+        return null;
     }
 
-    public OrderDto CalculateOrder(OrderDto orderDto)
+    public async Task<OrderDto> CalculateOrder(OrderDto orderDto)
     {
         // Get product types for the products in the order
         //Because the order might end up having more than one ProductType, it's better to call the API just one time and get all the product types
-        var productTypes = _bussinessRules.GetProductTypes();
-
-        //Get the productDto for all the products in the order
-        var productsDto = orderDto.Items
-                               .Select(item => _bussinessRules.GetProductById(item.ProductId))
-                               .ToList();
-
-
-        List<InsuranceDto> list = new();
-        foreach (var productDto in productsDto)
+        try
         {
-            //Matching each product to its product type and creating and InsuranceDto
-            var productType = productTypes.FirstOrDefault(item => item.id == productDto.productTypeId);
-            list.Add(new InsuranceDto(productDto.id, productType.name, productType.canBeInsured, productDto.salesPrice));
+            var productTypes = _bussinessRules.GetProductTypes();
+            //Get the productDto for all the products in the order
+            var productsDto = orderDto.Items
+                                   .Select(item => _bussinessRules.GetProductById(item.ProductId))
+                                   .ToList();
+
+
+            List<InsuredProduct> list = new();
+            foreach (var productDto in productsDto)
+            {
+                //Matching each product to its product type and creating an InsuranceDto
+                var productType = productTypes.FirstOrDefault(item => item.id == productDto.productTypeId);
+                list.Add(new InsuredProduct(productDto, productType));
+            }
+            var totalList = new List<InsuredProduct>();
+            //Calculating insurance for every product on the list
+            foreach (var item in list)
+            {
+                var product = await CalculateInsuranceValue(item);
+                totalList.Add(product);
+            }
+
+            Order order = new Order(orderDto.OrderId);
+            //Updating order with the insurance calculations
+            order.OrderItems = totalList;
+
+            //Calculating the total for order insurance 
+            order.CalculateInsurance();
+
+            //Checking if order contains product from type DigitalCameras
+            //Rule - If an order has one or more digital cameras, add € 500 to the insured value of the order.
+
+            if (DslCheck(order.OrderItems))
+            {
+                order.OrderInsurance += 500;
+            }
+
+            var insuredOrder = await _insuranceRepo.AddOrder(order);
+            var insuredOrderDto = insuredOrder.toDto();
+            return insuredOrderDto;
+
+        }
+        catch (Exception)
+        {
+
+            return null;
         }
 
-        //Calculating insurance for every product on the list
-        orderDto.Items = list
-            .Select(item => CalculateInsurance(item.ProductId))
-            .ToList();
-
-        //Calculating the order insurance 
-        orderDto.OrderInsurance = orderDto.Items
-            .Sum(item => item.InsuranceValue);
-
-        //Checking if order contains product from type DigitalCameras
-        //Rule - If an order has one or more digital cameras, add € 500 to the insured value of the order.
-        var dslCheck = orderDto.Items.Exists(item => item.ProductTypeName == ProductTypeName.DigitalCameras.ToString());
-        if (dslCheck)
-        {
-            orderDto.OrderInsurance += 500;
-        }
-        return orderDto;
     }
 
+    public async Task<InsuranceDto> GetById(int id)
+    {
+        try
+        {
+            var insuredProduct = await _insuranceRepo.GetById(id);
+            return insuredProduct.toDto();
 
-    private InsuranceDto CalculateInsuranceValue(InsuranceDto toInsure)
+        }
+        catch (Exception)
+        {
+
+            return null;
+        }
+
+    }
+
+    public async Task<IEnumerable<InsuranceDto>> GetAll()
+    {
+        try
+        {
+            var insuredProducts = await _insuranceRepo.GetAll();
+            var insuredDtos = insuredProducts.Select(x => x.toDto());
+            return insuredDtos;
+        }
+        catch (Exception)
+        {
+
+            return null;
+        }
+
+    }
+
+    private async Task<InsuredProduct> CalculateInsuranceValue(InsuredProduct toInsure)
     {
         {
             // Check for rule - If the type of the product is a smartphone or a laptop, add € 500 more to the insurance cost.
@@ -93,9 +166,76 @@ public class InsuranceService : IInsuranceService
                 _ => throw new NotFiniteNumberException()
             };
             toInsure.InsuranceValue += calculateInsuranceValue;
+            var hasSurcharge = await HasSurcharge(toInsure.ProductTypeId);
+            if (hasSurcharge is not null)
+            {
+                toInsure.ApplySurcharge(hasSurcharge.Rate);
+            }
         }
         return toInsure;
 
     }
+
+    private bool DslCheck(List<InsuredProduct> insuredProducts)
+    {
+        var hasDSL = insuredProducts.Exists(item => item.ProductTypeName == ProductTypeName.DigitalCameras.ToString());
+        return hasDSL;
+    }
+
+    public async Task<SurchargeDto> UploadSurchargeRate(int productTypeId, float surchargeRate)
+    {
+        var alreadyHasRate = await _surchargeRateRepo.Exists(productTypeId);
+        if (alreadyHasRate)
+        {
+            var updatedRate = await _surchargeRateRepo.Update(productTypeId,surchargeRate);
+            return updatedRate.toDto();
+        }
+
+        var productTypeDto = _bussinessRules.GetProductType(productTypeId);
+        if (productTypeDto == null)
+        {
+            return null;
+        }
+        SurchargeRate rate = new(productTypeDto.id, productTypeDto.name, surchargeRate);
+        var uploadedSurcharge = await _surchargeRateRepo.Add(rate);
+        var surchargeDto = uploadedSurcharge.toDto();
+        return surchargeDto;
+
+    }
+
+    public async Task<List<InsuranceDto>> UpdateInsuranceValue(int productTypeId, float rate)
+    {
+       
+        var products = await _insuranceRepo.FindByProductsByTypeId(productTypeId);
+        if (!products.Any())
+        {
+            return  new List<InsuranceDto>();
+        }
+        try
+        {
+            products.ForEach(product =>  product.ApplySurcharge(rate) );
+            var updatedProducts = await _insuranceRepo.Update(products);
+            var updatedDtos = updatedProducts.Select(product => product.toDto()).ToList();
+            return updatedDtos;
+        }
+        catch (Exception)
+        {
+
+            return null;
+        }
+
+    }
+
+    // Checks if the product has any surcharge rate associated 
+    private async Task<SurchargeRate> HasSurcharge(int productTypeId)
+    {
+        var rate = await _surchargeRateRepo.GetByProductTypeId(productTypeId);
+        if (rate is null)
+        {
+            return null;
+        }
+        return rate;
+    }
+
 }
 
