@@ -1,4 +1,7 @@
+using Insurance.Api.Repositories.InsuranceRepository;
+using Insurance.Api.Repositories.SurchargeRateRepo;
 using Insurance.Api.Services;
+using Insurance.Api.Services.Shared;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +25,9 @@ namespace Insurance.Api
         {
             MySettings mySettings = Configuration.GetSection("Settings").Get<MySettings>();
             services.AddScoped<IInsuranceService, InsuranceService>();
+            services.AddScoped<IInsuranceRepo, InsuranceRepo>();
+            services.AddScoped<ISurchargeRateRepo, SurchargeRateRepo>();
+            services.AddScoped<IBusinessRules, BusinessRules>();
             services.AddSingleton(mySettings);
             services.AddHttpClient<BusinessRules>();
             services.AddControllers();
