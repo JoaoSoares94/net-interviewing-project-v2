@@ -1,16 +1,18 @@
 using Insurance.Api.Services;
 using Insurance.Api.Services.Dto;
+using Insurance.Api.Services.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Threading.Tasks;
 
-public class BusinessRules
+public class BusinessRules : IBusinessRules
 {
     private readonly HttpClient _httpClient;
     private readonly MySettings _mySettings;
+
+
 
     public BusinessRules(HttpClient httpClient, MySettings mySettings)
     {
@@ -18,7 +20,6 @@ public class BusinessRules
         _mySettings = mySettings;
         _httpClient.BaseAddress = new Uri(mySettings.ProductApi);
     }
-
 
     public ProductDto GetProductById(int productId)
     {
@@ -47,7 +48,7 @@ public class BusinessRules
         }
         catch (Exception)
         {
-            throw;
+            return null;
         }
     }
 
@@ -117,4 +118,5 @@ public class BusinessRules
         }
 
     }
+
 }
