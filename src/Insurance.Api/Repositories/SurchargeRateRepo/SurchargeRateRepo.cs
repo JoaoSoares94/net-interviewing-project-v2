@@ -15,7 +15,7 @@ namespace Insurance.Api.Repositories.SurchargeRateRepo
                 Id= 1,
                 ProductTypeId= 1,
                 Rate = 21.3f,
-                ProductTypeName = "Laptops"
+                ProductTypeName = "Washing machines"
             }
         };
 
