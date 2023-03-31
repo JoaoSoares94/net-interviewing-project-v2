@@ -71,6 +71,8 @@ namespace Insurance.Api.Repositories.InsuranceRepository
         {
             try
             {
+                //In a db scenario, you don't need this as it is created automatically.
+                order.Id = orders.Count();
                 orders.Add(order);
             }
             catch (System.Exception)

@@ -49,6 +49,7 @@ public class InsuranceController : ControllerBase
     [Route("product")]
     public async Task<ActionResult<InsuranceDto>> CalculateInsurance([FromBody] InsuranceDto toInsure)
     {
+
         if (toInsure is null)
         {
             return BadRequest(new { message = "Please provide a valid product" });
@@ -74,10 +75,13 @@ public class InsuranceController : ControllerBase
     [Route("orders")]
     public async Task<ActionResult<OrderDto>> CalculateInsurance([FromBody] OrderDto toInsure)
     {
+        //Check if dto is not null
         if (toInsure is null)
         {
             return BadRequest(new { message = "Please provide a valid order" });
         }
+        //Perform insurance calcualtions for the order.
+        //Will return And OrderDto if succeeds or null if not.
         var insuredOrder = await _insuranceService.CalculateOrder(toInsure);
 
         if (insuredOrder is null)

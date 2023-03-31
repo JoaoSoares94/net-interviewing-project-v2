@@ -8,7 +8,7 @@ namespace Insurance.Api.Model
         public int Id { get; set; }
         public List<InsuredProduct> OrderItems { get; set; }
 
-        public double? OrderInsurance { get; set; }
+        public double OrderInsurance { get; set; }
 
         public Order(int id)
         {
