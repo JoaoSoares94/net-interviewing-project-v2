@@ -1,4 +1,6 @@
-﻿using Insurance.Api.Model;
+﻿using Insurance.Api.Data;
+using Insurance.Api.Model;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,41 +8,19 @@ using System.Threading.Tasks;
 
 namespace Insurance.Api.Repositories.SurchargeRateRepo
 {
-    public class SurchargeRateRepo : ISurchargeRateRepo
+    public class SurchargeRateRepo : BaseRepository<SurchargeRate>, ISurchargeRateRepo
     {
-        private static List<SurchargeRate> list = new()
+        public SurchargeRateRepo(DataContext dataContext) : base(dataContext.SurchargeRates)
         {
-            new SurchargeRate()
-            {
-                Id= 1,
-                ProductTypeId= 1,
-                Rate = 21.3f,
-                ProductTypeName = "Washing machines"
-            }
-        };
-
-        //Adds a SurchargeRate
-        public async Task<SurchargeRate> Add(SurchargeRate surcharge)
-        {
-            try
-            {
-                surcharge.Id = list.Count();
-                list.Add(surcharge);
-            }
-            catch (Exception)
-            {
-
-                return null;
-            }
-            return surcharge;
         }
+
 
         //Retrieves a Surcharge Rate based on its productTypeId
         public async Task<SurchargeRate> GetByProductTypeId(int productTypeId)
         {
             try
             {
-                var surchargeRate = list.FirstOrDefault(x => x.ProductTypeId == productTypeId);
+                var surchargeRate = await _objs.FirstOrDefaultAsync(x => x.ProductTypeId == productTypeId);
                 return surchargeRate;
             }
             catch (Exception)
@@ -50,29 +30,23 @@ namespace Insurance.Api.Repositories.SurchargeRateRepo
             }
         }
         //Updates the rate of SurchargeRate based on its productTypeId
-        public async Task<SurchargeRate> Update(int productTypeId,float surchargeRate)
+        public async Task<SurchargeRate> Update(int productTypeId, float surchargeRate)
         {
             try
             {
-                foreach (var item in list)
+                var rate = await _objs.Where(x => x.ProductTypeId == productTypeId).FirstOrDefaultAsync();
+                if(rate.Rate == surchargeRate)
                 {
-
-                    if (item.ProductTypeId == productTypeId)
-                    {
-                        item.Rate = surchargeRate;
-                        return item;
-
-                    }
+                    throw new ArgumentException("Please provide a different rate than the one is currently attributed");
                 }
-                return null;
+                rate.Rate = surchargeRate;
+                return rate;
             }
-
             catch (Exception)
             {
 
                 return null;
             }
-
 
         }
         //This methods checks if there is any SurchargeRate with this productTypeId
@@ -80,13 +54,13 @@ namespace Insurance.Api.Repositories.SurchargeRateRepo
         {
             try
             {
-                var surchargeRate = list.Any(x => x.ProductTypeId == productTypeId);
+                var surchargeRate = await _objs.AnyAsync(x => x.ProductTypeId == productTypeId);
                 return surchargeRate;
             }
             catch (Exception)
             {
 
-                return false ;
+                throw new NullReferenceException (nameof(SurchargeRate));
             }
         }
     }

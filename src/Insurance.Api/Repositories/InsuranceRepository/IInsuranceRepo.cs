@@ -5,23 +5,11 @@ using System.Threading.Tasks;
 
 namespace Insurance.Api.Repositories.InsuranceRepository
 {
-    public interface IInsuranceRepo
+    public interface IInsuranceRepo : IRepository<InsuredProduct>
     {
-        //CRUD
-        Task<InsuredProduct> GetById(int id);
-
-        Task<IEnumerable<InsuredProduct>> GetAll();
-
-        Task<InsuredProduct> Add(InsuredProduct insuranceProduct);
-
-        Task<Order> AddOrder(Order order);
-
-        Task<List<InsuredProduct>> Update(List<InsuredProduct> products);
-
-        Task<InsuredProduct> Delete(int id);
+        Task Update(List<InsuredProduct> products);
 
         Task<List<InsuredProduct>> FindByProductsByTypeId(int productTypeId);
-
 
     }
 }
