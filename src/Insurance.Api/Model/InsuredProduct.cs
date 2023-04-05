@@ -1,11 +1,12 @@
 ﻿using Insurance.Api.Services.Dto;
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Insurance.Api.Model
 {
-    public class InsuredProduct
+    public class InsuredProduct : Entity
     {
-        public int Id { get; set; }
+        public override int Id { get; set; }
 
         public int ProductId { get; set; }
 

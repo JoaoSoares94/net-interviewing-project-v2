@@ -3,17 +3,12 @@ using System.Linq;
 
 namespace Insurance.Api.Model
 {
-    public class Order
+    public class Order : Entity
     {
-        public int Id { get; set; }
+        public override int Id { get; set; }
         public List<InsuredProduct> OrderItems { get; set; }
 
         public double OrderInsurance { get; set; }
-
-        public Order(int id)
-        {
-            Id = id;
-        }
 
         public Order() { }
         public void CalculateInsurance()

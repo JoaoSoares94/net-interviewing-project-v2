@@ -2,9 +2,9 @@
 
 namespace Insurance.Api.Model
 {
-    public class SurchargeRate
+    public class SurchargeRate : Entity
     {
-        public int Id { get; set; }
+        public override int Id { get; set; }
 
         public int ProductTypeId { get; set; }
 
