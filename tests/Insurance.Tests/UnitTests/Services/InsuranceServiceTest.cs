@@ -1,5 +1,7 @@
-﻿using Insurance.Api.Model;
+﻿using Insurance.Api.Data;
+using Insurance.Api.Model;
 using Insurance.Api.Repositories.InsuranceRepository;
+using Insurance.Api.Repositories.OrderRepo;
 using Insurance.Api.Repositories.SurchargeRateRepo;
 using Insurance.Api.Services.Dto;
 using Insurance.Api.Services.Shared;
@@ -14,13 +16,16 @@ namespace Insurance.Tests.UnitTests.Services
     {
         private readonly Mock<IBusinessRules> _businessRulesMock = new Mock<IBusinessRules>();
         private readonly Mock<IInsuranceRepo> _insuranceRepoMock = new Mock<IInsuranceRepo>();
+        private readonly Mock<IOrderRepo> _orderRepoMock = new Mock<IOrderRepo>();
         private readonly Mock<ISurchargeRateRepo> _surchargeRepoMock = new Mock<ISurchargeRateRepo>();
+        private readonly Mock<IUnitOfWork> _unitOfWork = new Mock<IUnitOfWork>();
+
         private readonly InsuranceService _insuranceService;
 
 
         public InsuranceServiceTests()
         {
-            _insuranceService = new InsuranceService(_businessRulesMock.Object, _insuranceRepoMock.Object, _surchargeRepoMock.Object);
+            _insuranceService = new InsuranceService(_businessRulesMock.Object, _insuranceRepoMock.Object, _surchargeRepoMock.Object,_unitOfWork.Object, _orderRepoMock.Object);
         }
 
         [Theory]
@@ -172,7 +177,7 @@ namespace Insurance.Tests.UnitTests.Services
             _businessRulesMock.Setup(mock => mock.GetProductById(3))
                 .Returns(new ProductDto { id = 3, name = "Product 3", productTypeId = 3, salesPrice = 2500 });
 
-            _insuranceRepoMock.Setup(x => x.AddOrder(It.IsAny<Order>())).Returns(Task.FromResult(order));
+            _orderRepoMock.Setup(x => x.Add(It.IsAny<Order>())).Returns(Task.FromResult(order));
 
             // Act
             var result = await _insuranceService.CalculateOrder(orderDto);
@@ -182,7 +187,7 @@ namespace Insurance.Tests.UnitTests.Services
             _businessRulesMock.Verify(mock => mock.GetProductById(1), Times.Once);
             _businessRulesMock.Verify(mock => mock.GetProductById(2), Times.Once);
             _businessRulesMock.Verify(mock => mock.GetProductById(3), Times.Once);
-            _insuranceRepoMock.Verify(mock => mock.AddOrder(It.IsAny<Order>()), Times.Once);
+            _orderRepoMock.Verify(mock => mock.Add(It.IsAny<Order>()), Times.Once);
 
             Assert.NotNull(result);
             Assert.Equal(5000, result.OrderInsurance);
