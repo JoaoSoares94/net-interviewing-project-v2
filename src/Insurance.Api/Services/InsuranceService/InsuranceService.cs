@@ -1,5 +1,7 @@
-﻿using Insurance.Api.Model;
+﻿using Insurance.Api.Data;
+using Insurance.Api.Model;
 using Insurance.Api.Repositories.InsuranceRepository;
+using Insurance.Api.Repositories.OrderRepo;
 using Insurance.Api.Repositories.SurchargeRateRepo;
 using Insurance.Api.Services.Dto;
 using Insurance.Api.Services.Shared;
@@ -13,13 +15,18 @@ public class InsuranceService : IInsuranceService
 {
     private readonly IBusinessRules _bussinessRules;
     private readonly IInsuranceRepo _insuranceRepo;
+    private readonly IOrderRepo _orderRepo;
     private readonly ISurchargeRateRepo _surchargeRateRepo;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public InsuranceService(IBusinessRules bussinessRules, IInsuranceRepo insuranceRepo, ISurchargeRateRepo surchargeRateRepo)
+
+    public InsuranceService(IBusinessRules bussinessRules, IInsuranceRepo insuranceRepo, ISurchargeRateRepo surchargeRateRepo, IUnitOfWork unitOfWork, IOrderRepo orderRepo)
     {
         _bussinessRules = bussinessRules;
         _insuranceRepo = insuranceRepo;
         _surchargeRateRepo = surchargeRateRepo;
+        _unitOfWork = unitOfWork;
+        _orderRepo = orderRepo;
     }
 
 
@@ -48,6 +55,7 @@ public class InsuranceService : IInsuranceService
                 var calculateInsurance = await CalculateInsuranceValue(toBeInsured);
                 //Adds Insured Product to storage
                 var insuredProduct = await _insuranceRepo.Add(calculateInsurance);
+                await _unitOfWork.CommitAsync();
                 //Returns a dto of the Insured Product
                 return insuredProduct.toDto(); ;
             }
@@ -103,8 +111,9 @@ public class InsuranceService : IInsuranceService
                 order.OrderInsurance += 500;
             }
             //Add order to db
-            var insuredOrder = await _insuranceRepo.AddOrder(order);
+            var insuredOrder = await _orderRepo.Add(order);
             //Convert Order into dto
+            await _unitOfWork.CommitAsync();
             var insuredOrderDto = insuredOrder.toDto();
             return insuredOrderDto;
 
@@ -121,7 +130,7 @@ public class InsuranceService : IInsuranceService
     {
         try
         {
-            var insuredProduct = await _insuranceRepo.GetById(id);
+            var insuredProduct = await _insuranceRepo.Get(id);
             return insuredProduct.toDto();
 
         }
@@ -151,6 +160,7 @@ public class InsuranceService : IInsuranceService
     private async Task<InsuredProduct> CalculateInsuranceValue(InsuredProduct toInsure)
     {
         {
+            toInsure.InsuranceValue = 0;
             // Check for rule - If the type of the product is a smartphone or a laptop, add € 500 more to the insurance cost.
             //Static values instead of magic strings is a far less error prone approach
 
@@ -200,6 +210,8 @@ public class InsuranceService : IInsuranceService
         if (alreadyHasRate)
         {
             var updatedRate = await _surchargeRateRepo.Update(productTypeId, surchargeRate);
+            await _unitOfWork.CommitAsync();
+
             //Returns dto of updatedRate
             return updatedRate.toDto();
         }
@@ -212,6 +224,7 @@ public class InsuranceService : IInsuranceService
         //Creates new SurchargeRate and adds its to the db
         SurchargeRate rate = new(productTypeDto.id, productTypeDto.name, surchargeRate);
         var uploadedSurcharge = await _surchargeRateRepo.Add(rate);
+        await _unitOfWork.CommitAsync();
         //Returns dto of created rate
         var surchargeDto = uploadedSurcharge.toDto();
         return surchargeDto;
@@ -230,12 +243,14 @@ public class InsuranceService : IInsuranceService
         }
         try
         {
+
             //For each product of the least, applies the surcharge rate.
-            products.ForEach(product => product.ApplySurcharge(rate));
+            var newProducts = products.Select(product => CalculateInsuranceValue(product).Result).ToList();
             //Updates db 
-            var updatedProducts = await _insuranceRepo.Update(products);
+            await _insuranceRepo.Update(products);
+            await _unitOfWork.CommitAsync();
             //creates a dto for each product of the list 
-            var updatedDtos = updatedProducts.Select(product => product.toDto()).ToList();
+            var updatedDtos = newProducts.Select(product => product.toDto()).ToList();
             return updatedDtos;
         }
         catch (Exception)
