@@ -30,7 +30,7 @@ namespace Insurance.Tests.Model.Tests
         public void toDto_ConvertsOrderToDto()
         {
             // Arrange
-            var order = new Order(123);
+            var order = new Order();
             order.OrderItems = new List<InsuredProduct>
             {
                 new InsuredProduct { ProductId = 1, ProductTypeName = "Gaming", SalesPrice = 5000.0, InsuranceValue = 1000.0 },
@@ -42,7 +42,6 @@ namespace Insurance.Tests.Model.Tests
             var dto = order.toDto();
 
             // Assert
-            Assert.Equal(123, dto.OrderId);
             Assert.Equal(6000.0f, dto.OrderInsurance);
             Assert.Collection(dto.Items,
                 item => Assert.Equal(1, item.ProductId),
