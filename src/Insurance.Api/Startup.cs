@@ -1,4 +1,6 @@
+using Insurance.Api.Data;
 using Insurance.Api.Repositories.InsuranceRepository;
+using Insurance.Api.Repositories.OrderRepo;
 using Insurance.Api.Repositories.SurchargeRateRepo;
 using Insurance.Api.Services;
 using Insurance.Api.Services.Shared;
@@ -24,10 +26,13 @@ namespace Insurance.Api
         public void ConfigureServices(IServiceCollection services)
         {
             MySettings mySettings = Configuration.GetSection("Settings").Get<MySettings>();
+            services.AddDbContext<DataContext>();
             services.AddScoped<IInsuranceService, InsuranceService>();
             services.AddScoped<IInsuranceRepo, InsuranceRepo>();
             services.AddScoped<ISurchargeRateRepo, SurchargeRateRepo>();
             services.AddScoped<IBusinessRules, BusinessRules>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IOrderRepo, OrderRepo>();
             services.AddSingleton(mySettings);
             services.AddHttpClient<BusinessRules>();
             services.AddControllers();
